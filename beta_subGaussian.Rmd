@@ -1,0 +1,236 @@
+---
+title: "**R** illustrations for the note *On the sub-Gaussianity of the Beta and Dirichlet distributions* by Olivier Marchal and Julyan Arbel"
+output: 
+ html_document:
+    toc: true
+    theme: united
+    number_sections: true
+---
+
+```{r,include=FALSE, cache = F}
+library(knitr)
+opts_chunk$set(
+  concordance = TRUE,
+  warning = FALSE,
+  cache = TRUE,
+  message = FALSE,
+  echo = FALSE
+)
+```
+
+
+
+```{r, message=FALSE, warning=FALSE}
+source("functions/subGaussian-fun.R")
+```
+
+This file provides **R** code for the note *On the sub-Gaussianity of the Beta and Dirichlet distributions* by Olivier Marchal and Julyan Arbel. The focus is to obtain the  optimal proxy variance of Beta distributions $X$, that is the smallest $\sigma^2$ such that:
+$$\mathbb{E}[\exp(\lambda (X-\mathbb{E}[X]))]\le\exp\left(\frac{\lambda^2\sigma^2}{2}\right)\,\,\text{for all } \lambda\in\mathbb{R}.
+$$
+
+# Names of R functions
+
+We consider the  optimal proxy variance, denoted by $\sigma^2_{\text{opt}}$, of a Beta$(\alpha,\beta)$ distribution. It is given by the function $\verb|var_proxy_opt(alpha,beta)|$ while $\verb|variance_beta(alpha,beta)|$ provides the variance $$\text{Var}[X]=\frac{\alpha\beta}{(\alpha+\beta)^2(\alpha+\beta+1)}.$$
+
+The code is as follows:
+
+```{r example_var_proxy_opt, echo=TRUE}
+alpha = 1
+beta = 1.3
+var_proxy_opt(alpha,beta)
+variance_beta(alpha,beta)
+```
+
+
+# Curves for the optimal proxy variance
+
+Let $S = \alpha+\beta$ be fixed and let vary $\alpha$ and $\beta$ as $S-\alpha$. 
+
+- Simple upper bound $\sigma_0^2$ for the proxy variance:  dotted black line,
+- Optimal proxy variance $\sigma_{\text{opt}}^2$: magenta line,
+- Variance $\text{Var}[X]$: dashed green line.
+
+```{r, separatebis, fig.width=4, fig.height=4, dev = c('png','pdf'), fig.keep = 'all'}
+# some graphs , dev = pdf
+
+# 1. simple curves for the optimal proxy variance
+
+# vector of sums S=alpha+beta
+SS = c(0.5,1,5,10)
+# SS=.5
+par(mfrow = c(1,1), mar = c(4,2,2,1))
+
+
+for(S in SS){
+  N_grid_alpha = 50
+  # grid on alpha from 0 to S avoiding 0 & S
+  aa = seq(0,.4*S, length = N_grid_alpha)[-1]
+  aa = c(aa,S/2,rev(S-aa))
+  aaa = seq(0,S,length = 100)[-c(1,100)]
+  sig2_opt = NULL
+  variance_vec = NULL
+  for(alp in aa){
+    sig2_opt = c(sig2_opt, var_proxy_opt(alp, S-alp))
+  }
+  for(alp in aaa){
+    variance_vec = c(variance_vec, variance_beta(alp, S-alp))
+  }
+  plot(c(0,aaa,S),c(0,variance_vec,0), type = 'l', 
+       lty = 2, lwd = 2, col = "darkgreen",
+       main = substitute(paste(alpha, "+", beta, "=", S),
+                         list(S=S)),
+       xlab = expression(alpha), ylab = ""
+       )
+  lines(c(0,aa,S),c(0,sig2_opt,0), col = "magenta", lwd = 2)
+  var_max = variance_beta(S/2,S/2)
+  lines(x = c(0,S), y = c(var_max,var_max), lty = 3, lwd = 2)
+}
+```
+
+
+# Surface for the optimal proxy variance
+
+We now let both $\alpha$ and $\beta$ vary. 
+
+
+- Simple upper bound $\sigma_0^2$ for the proxy variance: not shown (is a ruled surface),
+- Optimal proxy variance $\sigma_{\text{opt}}^2$: magenta surface,
+- Variance $\text{Var}[X]$: green surface.
+
+
+The graphs can be zoomed in/out and rotated with the mouse.
+
+```{r}
+# install.packages('rgl')
+# install.packages('rglwidget')
+library('rgl')
+# library('rglwidget')
+# par(mfrow = c(2,2), mar = c(4,2,2,1))
+
+# grid size Ngrid x Ngrid
+Ngrid = 16
+
+
+
+alpha_max = 4
+beta_max = alpha_max
+
+aa = seq(1,alpha_max,length = Ngrid+1)[-1]
+bb = seq(1,beta_max,length = Ngrid+1)[-1]
+
+sigma2_opt = matrix(0, nrow = Ngrid, ncol = Ngrid)
+variance_mat = matrix(0, nrow = Ngrid, ncol = Ngrid)
+for(i in 1:Ngrid){
+  for(j in 1:Ngrid){
+    alp = aa[i]
+    bet = bb[j]
+    sigma2_opt[i,j] = var_proxy_opt(alp,bet)
+    variance_mat[i,j] = variance_beta(alp,bet)
+  }
+}
+```
+
+
+```{r fig2, webgl=TRUE}
+  knit_hooks$set(webgl = hook_webgl)
+mfrow3d(1, 2, sharedMouse = TRUE)
+persp3d(aa,bb,sigma2_opt, xlab = expression(alpha), ylab = expression(beta), col = "magenta", zlab = "")
+# varmat = cbind(rep(0,Ngrid),variance_mat)
+# varmat = rbind(c(.25,rep(0,Ngrid)),varmat)
+persp3d(aa,bb,variance_mat, xlab = expression(alpha), ylab = expression(beta), col = "green", zlab = "")
+
+# rglwidget(elementId="plot3drgl")
+```
+
+3D view of optimal proxy variance (magenta) and variance (green). Should be possible to play with the mouse on graphs: zoom in/out, rotate, etc.
+
+```{r figsamegraph, webgl=TRUE}
+  knit_hooks$set(webgl = hook_webgl)
+
+mfrow3d(1, 1)
+persp3d(aa,bb,sigma2_opt, xlab = expression(alpha), ylab = expression(beta), col = "magenta", zlab = "")
+persp3d(aa,bb,variance_mat, xlab = expression(alpha), ylab = expression(beta), col = "green", zlab = "", add = TRUE)
+# rglwidget(elementId="plot3drgl")
+```
+
+
+```{r figsamegraphpdf}
+mfrow3d(1, 1)
+persp3d(aa,bb,sigma2_opt, xlab = expression(alpha), ylab = expression(beta), col = "magenta", zlab = "")
+persp3d(aa,bb,variance_mat, xlab = expression(alpha), ylab = expression(beta), col = "green", zlab = "", add = TRUE)
+rgl.postscript("figures/persp3d.pdf","pdf")
+# rglwidget(elementId="plot3drgl")
+```
+
+
+#Illustration of the  proof
+
+ The intuition of the proof can be seen from this figure which represents the difference
+  $$\lambda\mapsto\exp\left(\mathbb{E}[X]\lambda+\frac{\sigma^2}{2}\lambda^2\right)-\mathbb{E}[\exp(\lambda X)],$$
+  for various values of $\sigma^2$. The main argument is that the optimal proxy variance is obtained for that curve (in magenta) whose positive local minimum equals zero.
+  
+  - For $t=0$ (simple upper bound $\sigma_0^2$), the curve [dotted black] remains strictly positive. 
+  - For $t=t_{\text{opt}}$ (optimal proxy variance $\sigma^2_{\text{opt}}$), the curve [magenta] has zero minimum (at $x_0$).
+  - For $t=1$ (leading to the variance), the curve [dashed green] has zero derivative at $x=0$, hence is directly negative after 0. 
+  - The intermediate case with $t_{\text{non opt}}$ in the interval $(t_{\text{opt}},1)$ produces a curve [orange, dash and dots] which is first positive, then negative, and positive again.
+
+
+```{r, illustration_proof, dev = c('png','pdf'), fig.width=6, fig.height=4}
+############################
+# # test optimal proxy
+############################
+
+par(mar  = c(2,2,.5,.1))
+# we cponsider a Beta(c,2a-c) that is a Beta(1.3,1.8)
+alpha=1
+beta=1.3
+c = alpha
+a = (alpha+beta)/2
+Nl = 50
+llambda= seq(0,3,length = Nl) # grid on [0,2.5]
+
+# three considered function bounds 
+f = function(lambda){ # in black
+  sigma20 = .25/(2*a+1)
+  exp(lambda^2*sigma20/2+lambda*c/(2*a))
+  # exp(lambda^2*sigma20/2)
+}
+fopt = function(lambda){ # in green
+  sigma2opt = var_proxy_opt(alpha,beta)
+  exp(lambda^2*sigma2opt/2+lambda*c/(2*a))
+  # exp(lambda^2*sigma2opt/2)
+}
+fnonopt = function(lambda){ # in red
+  sigma2nonopt = var_proxy_opt(alpha,beta)*.997
+  exp(lambda^2*sigma2nonopt/2+lambda*c/(2*a))
+  # exp(lambda^2*sigma2nonopt/2)
+}
+fvar = function(lambda){ # in red
+  sigma2var = variance_beta(alpha,beta)
+  exp(lambda^2*sigma2var/2+lambda*c/(2*a))
+  # exp(lambda^2*sigma2nonopt/2)
+}
+psi = F_conf(c,2*a,llambda) # kummerM function returns complex numbers so I need
+# to take the real part Re(.)
+
+
+# below I plot the differences between tentative bound and MGF called psi
+plot(NULL, ylab="", type = 'l', xlim = c(0,3),ylim = c(-.001,.002), axes = FALSE)
+axis(1, c(0,1,2,3))     
+axis(2, c(-.001,0,.001,.002), (-1):2) #seq(-.001,.0015,length = 6))
+text(x = -.02, y = .00205, labels = expression(scriptstyle(x10^{-3})))
+points(x = 1.42, y = 0, pch = 20)
+text(x = 1.42, y = -.0001, labels = expression(italic(x[0])))
+     # ylim = c(min(fnonopt(llambda)-psi), max(f(llambda)-psi)))
+colvec = c("black", "magenta", "darkorange", "darkgreen")
+ltyvec = c(3,1,4,2)
+lines(llambda, f(llambda)-psi, col = "black", lty = 3, lwd = 2)
+lines(llambda, fopt(llambda)-psi, col = "magenta", lwd = 2)
+lines(llambda, fnonopt(llambda)-psi, col = "darkorange", lty = 4, lwd = 2)
+lines(llambda, fvar(llambda)-psi,xlab="", col = "darkgreen", lty = 2, lwd = 2)
+legendtxt = c(expression(u[0]),expression(u[t[opt]]),expression(u[t[non~opt]]),expression(u[1]))
+legend(x = 0, y = .002, lty = ltyvec, col = colvec, legend = legendtxt, lwd = 2)
+
+abline(a = 0, b = 0) # horizontal line, x-axis at y = 0 in fact
+```
+
